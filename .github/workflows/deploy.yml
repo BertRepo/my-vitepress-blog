@@ -86,10 +86,25 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://smarthua.cn
     runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # # 部署到阿里云服务器
+      # - name: Deploy to Aliyun Server
+      #   uses: appleboy/ssh-action@v1.0.0
+      #   with:
+      #     host: ${{ secrets.ALIYUN_HOST }}
+      #     username: ${{ secrets.ALIYUN_USERNAME }}
+      #     key: ${{ secrets.ALIYUN_SSH_PRIVATE_KEY }}
+      #     port: 22
+      #     script: |
+      #       cd /path/to/your/project
+      #       git pull origin main
+      #       pnpm install --frozen-lockfile
+      #       pnpm build
+      #       # 这里可以添加重启服务的命令，例如 pm2 restart your-app
