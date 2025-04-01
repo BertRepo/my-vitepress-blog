@@ -1,110 +1,55 @@
-name: Deploy Pages
+name: Deploy VitePress to GitHub Pages
 
-# 触发条件，push到main分支或者pull request到main分支
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-
-  # 支持手动在工作流上触发
   workflow_dispatch:
 
-# 设置时区
 env:
   TZ: Asia/Shanghai
 
-# 权限设置
 permissions:
-  # 允许读取仓库内容的权限。
-  contents: read
-  # 允许写入 GitHub Pages 的权限。
+  contents: write  # 需要写入权限以推送 gh-pages 分支
   pages: write
-  # 允许写入 id-token 的权限。
   id-token: write
 
-# 并发控制配置
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
-# 定义执行任务
 jobs:
-  # 构建任务
   build:
-
     runs-on: ubuntu-latest
-
-    # node v20 运行
-    strategy:
-      matrix:
-        node-version: [20]
-
     steps:
-      # 拉取代码
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          # 保留 Git 信息
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
-      # 设置使用 Node.js 版本
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
 
-      # 使用 PNPM V8
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: 8
-          run_install: false
 
-        # 安装依赖
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-        # 构建项目
-      - name: Build blog project
-        run: |
-          echo ${{ github.workspace }}
-          pnpm build
+      - name: Build VitePress
+        run: pnpm build
 
-        # 资源拷贝
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./docs/.vitepress/dist
-          destination: ./_site
+      - name: Generate CNAME
+        run: echo "smarthua.cn" > docs/.vitepress/dist/CNAME
 
-        # 上传 _site 的资源，用于后续部署
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist  # 上传构建后的 dist 目录
 
-  # 部署任务
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: https://smarthua.cn
-    runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v4
-
-      # # 部署到阿里云服务器
-      # - name: Deploy to Aliyun Server
-      #   uses: appleboy/ssh-action@v1.0.0
-      #   with:
-      #     host: ${{ secrets.ALIYUN_HOST }}
-      #     username: ${{ secrets.ALIYUN_USERNAME }}
-      #     key: ${{ secrets.ALIYUN_SSH_PRIVATE_KEY }}
-      #     port: 22
-      #     script: |
-      #       cd /path/to/your/project
-      #       git pull origin main
-      #       pnpm install --frozen-lockfile
-      #       pnpm build
-      #       # 这里可以添加重启服务的命令，例如 pm2 restart your-app
